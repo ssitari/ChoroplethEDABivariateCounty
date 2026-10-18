@@ -20,17 +20,17 @@ export const DATA_CREDIT_HTML = `
 export const GEOGRAPHY_LABEL        = 'county';
 export const GEOGRAPHY_LABEL_PLURAL = 'counties';
 
-// Albers USA with Alaska moved into the Gulf of Mexico and Hawaii under
-// South Texas (projection.js). In the standard layout Alaska fills the
-// bottom-left corner, where the legend sits, so the map was pushed to the
-// top of the pane to clear it. With the corner empty the map stays centred
+// Albers USA with Alaska moved into the Gulf of Mexico and Hawaii to the
+// lower right, east of it (projection.js). In the standard layout Alaska
+// fills the bottom-left corner, where the legend sits, so the map was
+// pushed to the top of the pane to clear it. With the corner empty the map stays centred
 // and, no longer widened by Alaska, draws about 8% larger. Offsets are in
 // units of the projection scale; [0, 0] is the standard geoAlbersUsa layout.
 //
 // The 50 states and DC only: there is no inset for Puerto Rico or the
 // island areas, which are left out of the data for that reason.
 import { geoAlbersUsaMovable } from './projection.js';
-export const PROJECTION = () => geoAlbersUsaMovable({ alaska: [0.41, 0.05], hawaii: [0.07, 0] });
+export const PROJECTION = () => geoAlbersUsaMovable({ alaska: [0.41, 0.05], hawaii: [0.48, 0.05] });
 
 export const FEATURE_ID_FIELD    = 'GEOID';
 export const FEATURE_NAME_FIELD  = 'NAMELSAD';
