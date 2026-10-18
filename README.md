@@ -1,4 +1,6 @@
-# US Counties — Education × Income
+# Education and Income Across U.S. Counties
+
+*Bachelor’s attainment and median household income, ACS 2020–2024.*
 
 **Live site: [ssitari.github.io/ChoroplethEDABivariateCounty](https://ssitari.github.io/ChoroplethEDABivariateCounty/)**
 
@@ -25,6 +27,7 @@ This is a configured copy of [Choropleth EDA — Bivariate](https://github.com/s
 - **Classes are tertiles.** Each variable is split into thirds by number of counties, not by population, so a sparsely populated county counts as much as Los Angeles County.
 - **Small counties have noisy estimates.** Loving County, TX has 31 people aged 25 and over, and shows 0% with a degree. Margins of error for income (`med_hh_inc_moe`) and the 25+ population behind the education share (`pop_25_plus`) are in the GeoJSON but not shown on the page.
 - **One county has no income estimate:** De Baca County, NM. It is drawn in grey and left out of the scatterplot and statistics.
+- **Alaska and Hawaii are insets in non-standard places.** Alaska is drawn in the Gulf of Mexico and Hawaii below South Texas, so the bottom-left corner stays free for the legend and the map can stay centred. As in the usual Albers USA layout, Alaska is shown at 0.35 of its true scale relative to the lower 48. The layout is in `projection.js`; its offsets are set in `config.js`, and `[0, 0]` restores the standard positions.
 - **Area is not population.** Large western counties dominate the map visually; the scatterplot gives every county one dot.
 
 ### Rebuilding the data

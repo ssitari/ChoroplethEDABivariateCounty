@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- Set from PAGE_TITLE in config.js at load; this is the pre-load fallback. -->
-  <title>Choropleth EDA – Bivariate</title>
+  <title>Education and Income Across U.S. Counties</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -41,7 +41,14 @@
       font-weight: 600;
       color: #222;
       white-space: nowrap;
-      margin-right: 2px;
+      line-height: 1.25;
+    }
+    .title-block { margin-right: 2px; }
+    .subtitle {
+      font-size: 11px;
+      color: #888;
+      white-space: nowrap;
+      line-height: 1.25;
     }
     .ctrl-group { display: flex; align-items: center; gap: 5px; }
     .ctrl-label { font-size: 11px; color: #888; white-space: nowrap; }
@@ -184,11 +191,11 @@
       background: rgba(255,255,255,0.93);
       border: 0.5px solid #ddd;
       border-radius: 7px;
-      padding: 9px 11px 10px;
+      padding: 11px 13px 12px;
       backdrop-filter: blur(4px);
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
       z-index: 10;
-      max-width: 220px;
+      max-width: 264px;
     }
 
     /* ── Zoom controls ── */
@@ -381,8 +388,11 @@
 
   <!-- Toolbar -->
   <div id="toolbar">
-    <!-- Filled from PAGE_TITLE in config.js -->
-    <h1 id="appTitle"></h1>
+    <!-- Filled from PAGE_TITLE and PAGE_SUBTITLE in config.js -->
+    <div class="title-block">
+      <h1 id="appTitle"></h1>
+      <p class="subtitle" id="appSubtitle" hidden></p>
+    </div>
 
     <div class="ctrl-group">
       <label class="ctrl-label" for="varXSelect">X axis</label>

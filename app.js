@@ -18,6 +18,7 @@ import {
 // report anything. Each falls back to the behaviour that shipped before the
 // key existed, and the preflight warns where a fallback is in use.
 const PAGE_TITLE             = CONFIG.PAGE_TITLE ?? document.title;
+const PAGE_SUBTITLE          = CONFIG.PAGE_SUBTITLE ?? '';
 const DATA_CREDIT_HTML       = CONFIG.DATA_CREDIT_HTML ?? '';
 const GEOGRAPHY_LABEL_PLURAL = CONFIG.GEOGRAPHY_LABEL_PLURAL ?? (GEOGRAPHY_LABEL + 's');
 const PROJECTION             = CONFIG.PROJECTION ?? (() => d3.geoMercator());
@@ -172,24 +173,64 @@ function resizeMap() {
 
 // Fit the geography to the pane without running under the floating legend,
 // which used to cover whatever sat in the bottom-left corner (Alaska, on a
-// US map). Reserves a strip the size of the legend along either the bottom
-// or the left edge, whichever leaves the map larger: a wide shape such as
-// the US has vertical slack and loses nothing to a bottom strip, a tall one
-// loses nothing to a left strip. The legend is measured as drawn, so it must
-// exist before this runs; it is re-measured only when the pane is resized,
-// since refitting on a variable change would mean regenerating every path.
+// US map). In order of preference:
+//
+//   1. Centred and full size, if no feature reaches the legend. Features are
+//      tested one by one, not by the bounds of the whole map, so a map whose
+//      bottom-left corner is empty (open sea, an inset moved elsewhere) stays
+//      centred even though its bounding box runs under the legend.
+//   2. Full size, moved up or right by the least distance that clears the
+//      legend, if the pane has that much room on that side.
+//   3. Fitted beside a strip the size of the legend along the bottom or the
+//      left edge, whichever leaves the map larger. This shrinks or pushes the
+//      map to one side, so it is the last resort.
+//
+// The legend is measured as drawn, so it must exist before this runs; it is
+// re-measured only when the pane is resized, since refitting on a variable
+// change would mean regenerating every path.
 function fitAroundLegend(w, h) {
   const GAP = 8;
   const pane = document.getElementById('mapPane').getBoundingClientRect();
   const lg   = document.getElementById('floatLegend').getBoundingClientRect();
-  const extents = [[[0, 0], [w, h]]];
-  if (lg.width && lg.height) {
-    const left   = Math.min(lg.right - pane.left + GAP, w / 2);
-    const bottom = Math.min(pane.bottom - lg.top + GAP, h / 2);
-    extents.splice(0, 1, [[left, 0], [w, h]], [[0, 0], [w, h - bottom]]);
+  const centred = PROJECTION().fitExtent([[0, 0], [w, h]], state.geojson);
+  if (!lg.width || !lg.height) return centred;
+
+  // Legend rectangle in pane coordinates, padded by GAP
+  const lx0 = lg.left - pane.left - GAP, lx1 = lg.right  - pane.left + GAP;
+  const ly0 = lg.top  - pane.top  - GAP, ly1 = lg.bottom - pane.top  + GAP;
+
+  const path  = d3.geoPath(centred);
+  const boxes = state.geojson.features.map(f => path.bounds(f))
+    .filter(b => Number.isFinite(b[0][0]));
+  const inCols = ([[x0], [x1]])         => x1 > lx0 && x0 < lx1;
+  const inRows = ([[, y0], [, y1]])     => y1 > ly0 && y0 < ly1;
+
+  // 1. centred
+  if (!boxes.some(b => inCols(b) && inRows(b))) return centred;
+
+  // 2. least move up (everything in the legend's columns must end above it)
+  //    or right (everything in its rows must start right of it)
+  let up = 0, right = 0, top = Infinity, rightEdge = -Infinity;
+  for (const b of boxes) {
+    if (inCols(b)) up    = Math.max(up, b[1][1] - ly0);
+    if (inRows(b)) right = Math.max(right, lx1 - b[0][0]);
+    top       = Math.min(top, b[0][1]);
+    rightEdge = Math.max(rightEdge, b[1][0]);
   }
+  const moves = [];
+  if (up    <= top)           moves.push([0, -up, up]);
+  if (right <= w - rightEdge) moves.push([right, 0, right]);
+  if (moves.length) {
+    const [dx, dy] = moves.sort((a, b) => a[2] - b[2])[0];
+    const [tx, ty] = centred.translate();
+    return centred.translate([tx + dx, ty + dy]);
+  }
+
+  // 3. beside a legend-sized strip
+  const left   = Math.min(lx1, w / 2);
+  const bottom = Math.min(h - ly0, h / 2);
   let best = null;
-  for (const ext of extents) {
+  for (const ext of [[[left, 0], [w, h]], [[0, 0], [w, h - bottom]]]) {
     const p = PROJECTION().fitExtent(ext, state.geojson);
     if (!best || p.scale() > best.scale()) best = p;
   }
@@ -294,13 +335,13 @@ function drawLegend() {
 
   // Outer row: Y label | grid+X label
   const outer = document.createElement('div');
-  outer.style.cssText = 'display:flex;flex-direction:row;align-items:stretch;gap:5px;';
+  outer.style.cssText = 'display:flex;flex-direction:row;align-items:stretch;gap:6px;';
 
   // Rotated Y label
   const yLbl = document.createElement('div');
   yLbl.style.cssText = 'display:flex;align-items:center;justify-content:center;';
   const yTxt = document.createElement('div');
-  yTxt.style.cssText = 'font-size:9px;color:#777;font-weight:500;writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;';
+  yTxt.style.cssText = 'font-size:11px;color:#777;font-weight:500;writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;';
   yTxt.textContent = '↑ ' + vdy.label;
   yLbl.appendChild(yTxt);
   outer.appendChild(yLbl);
@@ -314,7 +355,7 @@ function drawLegend() {
   hdr.style.cssText = 'display:flex;gap:2px;';
   ['Low','Mid','High'].forEach(lbl => {
     const el = document.createElement('div');
-    el.style.cssText = 'width:28px;font-size:9px;color:#999;text-align:center;';
+    el.style.cssText = 'width:34px;font-size:11px;color:#999;text-align:center;';
     el.textContent = lbl;
     hdr.appendChild(el);
   });
@@ -327,7 +368,7 @@ function drawLegend() {
     rowEl.style.cssText = 'display:flex;gap:2px;';
     for (let col = 0; col < 3; col++) {
       const cell = document.createElement('div');
-      cell.style.cssText = `width:28px;height:22px;border-radius:3px;border:0.5px solid rgba(0,0,0,0.07);background:${colors[bivIndex(col,yClass)]};`;
+      cell.style.cssText = `width:34px;height:26px;border-radius:3px;border:0.5px solid rgba(0,0,0,0.07);background:${colors[bivIndex(col,yClass)]};`;
       cell.title = `X:${['Low','Mid','High'][col]}, Y:${['Low','Mid','High'][yClass]}`;
       rowEl.appendChild(cell);
     }
@@ -336,7 +377,7 @@ function drawLegend() {
 
   // X axis label
   const xLbl = document.createElement('div');
-  xLbl.style.cssText = 'font-size:9px;color:#777;font-weight:500;text-align:center;margin-top:1px;';
+  xLbl.style.cssText = 'font-size:11px;color:#777;font-weight:500;text-align:center;margin-top:1px;';
   xLbl.textContent = '→ ' + vdx.label;
   gridWrap.appendChild(xLbl);
 
@@ -350,19 +391,19 @@ function drawLegend() {
   // which used to reach vd.fmt(undefined) and throw.
   if (xb?.[0] != null && yb?.[0] != null) {
     const div = document.createElement('div');
-    div.style.cssText = 'border-top:0.5px solid #eee;margin:7px 0 5px;';
+    div.style.cssText = 'border-top:0.5px solid #eee;margin:8px 0 6px;';
     legend.appendChild(div);
 
     const brkTitle = document.createElement('div');
-    brkTitle.style.cssText = 'font-size:9px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;';
+    brkTitle.style.cssText = 'font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:5px;';
     brkTitle.textContent = 'Class breaks';
     legend.appendChild(brkTitle);
 
     [[vdx,'X:',xb],[vdy,'Y:',yb]].forEach(([vd, label, brk]) => {
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;gap:4px;margin-bottom:2px;align-items:baseline;';
-      row.innerHTML = `<span style="font-size:9px;color:#bbb;width:16px;flex-shrink:0;">${label}</span>` +
-        `<span style="font-size:9px;color:#555;">≤${vd.fmt(brk[0])} / ≤${vd.fmt(brk[1])} / >${vd.fmt(brk[1])}</span>`;
+      row.innerHTML = `<span style="font-size:11px;color:#bbb;width:19px;flex-shrink:0;">${label}</span>` +
+        `<span style="font-size:11px;color:#555;">≤${vd.fmt(brk[0])} / ≤${vd.fmt(brk[1])} / >${vd.fmt(brk[1])}</span>`;
       legend.appendChild(row);
     });
   }
@@ -878,6 +919,11 @@ function applyPageIdentity() {
   document.title = PAGE_TITLE;
   const h = document.getElementById('appTitle');
   if (h) h.textContent = PAGE_TITLE;
+  const sub = document.getElementById('appSubtitle');
+  if (sub) {
+    sub.textContent = PAGE_SUBTITLE;
+    sub.hidden = !PAGE_SUBTITLE;
+  }
   const credit = document.getElementById('pageCredit');
   // DATA_CREDIT_HTML is authored in config.js rather than read from the
   // data, so it is trusted markup and may contain links.

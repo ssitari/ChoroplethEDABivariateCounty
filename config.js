@@ -5,7 +5,10 @@
 
 export const DATA_FILE = './data/us_counties_acs2024.geojson';
 
-export const PAGE_TITLE = 'US Counties – Education × Income';
+export const PAGE_TITLE = 'Education and Income Across U.S. Counties';
+
+// Optional line under the heading; '' hides it.
+export const PAGE_SUBTITLE = 'Bachelor’s attainment and median household income, ACS 2020–2024';
 
 export const DATA_CREDIT_HTML = `
   Data: U.S. Census Bureau, American Community Survey 2020–2024 5-year estimates,
@@ -17,9 +20,17 @@ export const DATA_CREDIT_HTML = `
 export const GEOGRAPHY_LABEL        = 'county';
 export const GEOGRAPHY_LABEL_PLURAL = 'counties';
 
-// The 50 states and DC only: geoAlbersUsa has no inset for Puerto Rico or
-// the island areas, which are left out of the data for that reason.
-export const PROJECTION = () => d3.geoAlbersUsa();
+// Albers USA with Alaska moved into the Gulf of Mexico and Hawaii under
+// South Texas (projection.js). In the standard layout Alaska fills the
+// bottom-left corner, where the legend sits, so the map was pushed to the
+// top of the pane to clear it. With the corner empty the map stays centred
+// and, no longer widened by Alaska, draws about 8% larger. Offsets are in
+// units of the projection scale; [0, 0] is the standard geoAlbersUsa layout.
+//
+// The 50 states and DC only: there is no inset for Puerto Rico or the
+// island areas, which are left out of the data for that reason.
+import { geoAlbersUsaMovable } from './projection.js';
+export const PROJECTION = () => geoAlbersUsaMovable({ alaska: [0.41, 0.05], hawaii: [0.07, 0] });
 
 export const FEATURE_ID_FIELD    = 'GEOID';
 export const FEATURE_NAME_FIELD  = 'NAMELSAD';
